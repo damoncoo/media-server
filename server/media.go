@@ -12,7 +12,6 @@ import (
 	"github.com/damoncoo/media-server/movies"
 	"github.com/damoncoo/media-server/scanner"
 	"github.com/jaffee/commandeer"
-	"github.com/raspi/dirscanner"
 	"gopkg.in/yaml.v2"
 )
 
@@ -40,7 +39,7 @@ func (m *Command) Run() error {
 var (
 	command     *Command
 	cacheDir, _ = os.UserCacheDir()
-	allMovies   = []dirscanner.FileInformation{}
+	AllSources  = []*movies.Source{}
 	paths       = []string{}
 )
 
@@ -80,12 +79,24 @@ func main() {
 		files, err := scanner.FindAllMovies(path)
 		if err != nil {
 			log.Println(err)
+			continue
 		}
-		allMovies = append(allMovies, files...)
+
+		for _, file := range files {
+			name := movies.FileName(file.Path)
+			s := &movies.Source{
+				Name:     name,
+				FileSize: float64(file.Size),
+				FilePath: file.Path,
+				Poster:   "",
+				DirPath:  path,
+			}
+			AllSources = append(AllSources, s)
+		}
 	}
 
 	// sort all movies
-	err := movies.Trans(allMovies, database.DAO)
+	err := movies.Trans(AllSources, database.DAO)
 	if err != nil {
 		log.Println(err)
 	}

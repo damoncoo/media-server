@@ -6,35 +6,26 @@ import (
 	"log"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/raspi/dirscanner"
 )
 
 var (
-	AllMovies  = []*Movie{}
-	AllSources = []*Source{}
-	tmdbClient = resty.New()
-	tmbdMovies = []*TMDBMovie{}
+	AllMovies      = []*Movie{}
+	AllSources     = []*Source{}
+	tmdbClient     = resty.New()
+	movieId    int = 1
 )
 
 type MovieInterface interface {
-	AddMoviesToDB(movies []*Source) error
+	AddSourcesToDB(sources []*Source) error
+	AddMoviesToDB(sources []*Movie) error
 }
 
-func Trans(files []dirscanner.FileInformation, db MovieInterface) error {
+func Trans(files []*Source, db MovieInterface) error {
 
-	for _, file := range files {
-		name := FileName(file.Path)
-		AllSources = append(AllSources, &Source{
-			Name:     name,
-			FileSize: float64(file.Size),
-			FilePath: file.Path,
-			Poster:   "",
-		})
-	}
+	AllSources = files
+	go processInfoFromTMDB(db)
 
-	go processInfoFromTMDB()
-
-	return db.AddMoviesToDB(AllSources)
+	return nil
 }
 
 func InitTMDBClient() {
@@ -81,48 +72,56 @@ func queryMovie(query string, resource Source) {
 		log.Println(err)
 		return
 	}
-
-	if len(response.Result) == 0 {
-		movie := Movie{
-			Name:    resource.Name,
-			Poster:  "",
-			Sources: []Source{},
-		}
-		AllMovies = append(AllMovies, &movie)
-		movie.Sources = append(movie.Sources, resource)
-		return
+	var tm *TMDBMovie
+	if len(response.Result) != 0 {
+		tm = &(response.Result[0])
 	}
-	tm := response.Result[0]
-	getMovieForTMDBMovie(tm, resource)
+	movie := getMovieForTMDBMovie(tm, resource)
+	movie.Sources = append(movie.Sources, resource)
 }
 
-func getMovieForTMDBMovie(tm TMDBMovie, source Source) Movie {
+func getMovieForTMDBMovie(tm *TMDBMovie, source Source) *Movie {
 
-	for _, m := range AllMovies {
-		if m.TMBDId == tm.Id {
-			return *m
+	var movie Movie
+	if tm != nil {
+		for _, m := range AllMovies {
+			if m.TMBDId == tm.Id {
+				return m
+			}
 		}
+
+		movie = Movie{
+			Name:    tm.Title,
+			Poster:  tm.PosterPath,
+			Sources: []Source{},
+			TMBDId:  tm.Id,
+			DirPath: source.DirPath,
+			Id:      movieId,
+		}
+	} else {
+		movie = Movie{
+			Name:    source.Name,
+			Poster:  source.Poster,
+			Sources: []Source{},
+			DirPath: source.DirPath,
+			Id:      movieId,
+		}
+		movieId += 1
 	}
 
-	movie := Movie{
-		Name:   tm.Title,
-		Poster: tm.PosterPath,
-		Sources: []Source{
-			source,
-		},
-	}
 	defer func() {
 		AllMovies = append(AllMovies, &movie)
 	}()
 
-	return movie
+	return &movie
 }
 
-func processInfoFromTMDB() {
+func processInfoFromTMDB(db MovieInterface) {
 
 	for _, source := range AllSources {
 		processForSource(source)
 	}
+	_ = db.AddMoviesToDB(AllMovies)
 }
 
 func processForSource(resource *Source) {

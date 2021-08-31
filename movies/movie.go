@@ -6,6 +6,7 @@ type Source struct {
 	Poster   string  `json:"poster" xorm:"poster"`
 	FileSize float64 `json:"fileSize" xorm:"file_size"`
 	FilePath string  `json:"filePath" xorm:"file_path"`
+	DirPath  string  `json:"dir_path" xorm:"dir_path"`
 }
 
 type Movie struct {
@@ -14,6 +15,7 @@ type Movie struct {
 	Poster  string   `json:"poster" xorm:"poster"`
 	Sources []Source `json:"sources" xorm:"sources" form:"sources"`
 	TMBDId  int      `json:"tmbd_id" xorm:"-" `
+	DirPath string   `json:"dir_path" xorm:"dir_path"`
 }
 
 // Subtitle is Gorm model of subtitle

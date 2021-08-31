@@ -16,8 +16,13 @@ var (
 	DAO = MovieDAO{}
 )
 
-func (d MovieDAO) AddMoviesToDB(sources []*movies.Source) error {
+func (d MovieDAO) AddSourcesToDB(sources []*movies.Source) error {
 	_, err := DAO.ORMEngine.Table("source").Insert(sources)
+	return err
+}
+
+func (d MovieDAO) AddMoviesToDB(movies []*movies.Movie) error {
+	_, err := DAO.ORMEngine.Table("movie").Insert(movies)
 	return err
 }
 
